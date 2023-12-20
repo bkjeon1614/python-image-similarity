@@ -2,10 +2,10 @@
 
 ## 사용기술
 
-python: 3.9.6
-matplotlib: 3.5.2
-numpy: 1.23.1
-opencv_python: 4.6.0.66
+- python: 3.9.6
+- matplotlib: 3.5.2
+- numpy: 1.23.1
+- opencv_python: 4.6.0.66
 
 ## 초기설정
 

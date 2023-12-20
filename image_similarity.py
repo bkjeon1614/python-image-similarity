@@ -35,7 +35,12 @@ def imageResizeTest(image):
     return image
 
 # 이미지 목록 준비 (키포인트 및 설명자 생성)
-imageList = ["1.png", "2.png", "3.png", "4.png", "5.png", "6.png", "7.png"]
+imageList = list()
+for i in os.listdir(IMAGES_DIR_PATH):
+    fullPath = os.path.join(IMAGES_DIR_PATH, i)
+    if os.path.isfile(fullPath):
+        imageList.append(fullPath.split('/')[2])
+print(imageList)
 imagesBW = []
 for imageName in imageList:
     imagePath = IMAGES_DIR_PATH + "/" + str(imageName)
@@ -164,9 +169,9 @@ def getPlot(image1,image2,keypoint1,keypoint2,matches):
 
 # 결과값
 print('=============== result')
-calculateResultsFor(1, 1)
-calculateResultsFor(1, 2)
-calculateResultsFor(1, 3)
-calculateResultsFor(1, 4)
-calculateResultsFor(1, 5)
-calculateResultsFor(1, 6)
+calculateResultsFor(6, 6)
+calculateResultsFor(6, 1)
+calculateResultsFor(6, 2)
+calculateResultsFor(6, 3)
+calculateResultsFor(6, 4)
+calculateResultsFor(6, 5)
