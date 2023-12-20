@@ -3,9 +3,12 @@ import cv2
 import pickle
 import matplotlib.pyplot as plt
 
+DATA_DIR_PATH = 'data'
 IMAGES_DIR_PATH = 'data/images'
 DESCRIPTORS_DIR_PATH = 'data/descriptors'
 KEYPOINTS_DIR_PATH = 'data/keypoints'
+if not os.path.exists(DATA_DIR_PATH):
+    os.makedirs(DATA_DIR_PATH)
 if not os.path.exists(DESCRIPTORS_DIR_PATH):
     os.makedirs(DESCRIPTORS_DIR_PATH)
 if not os.path.exists(KEYPOINTS_DIR_PATH):
