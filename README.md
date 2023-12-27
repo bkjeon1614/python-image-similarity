@@ -3,9 +3,11 @@
 ## 사용기술
 
 - python: 3.9.6
-- matplotlib: 3.5.2
-- numpy: 1.23.1
-- opencv_python: 4.6.0.66
+- pip: 23.3.1
+- matplotlib: 3.8.2
+- numpy: 1.26.1
+- opencv_python: 4.8.1.78
+- requests: 2.31.0
 
 ## 초기설정
 
@@ -17,4 +19,5 @@ $ sh ./setup.sh
 
 #### 유사도 측정 실행
 
-python3 image_similarity.py
+python3 image_similarity.py {개발환경} {업로드파일명}
+
