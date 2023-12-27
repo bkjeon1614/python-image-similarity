@@ -12,6 +12,11 @@
 ## 초기설정
 
 ```
+// conda
+$ conda create --name "python3.9.6" python="3.9.6"
+$ conda info --envs
+$ conda activate {name}
+
 $ sh ./setup.sh
 ```
 

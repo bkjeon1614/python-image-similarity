@@ -112,7 +112,7 @@ def isImageProcess(selectImg, imageList):
             print('similarityResult 없음: ' + image)
         else:
             imageDictionary[image] = similarityResult[image]
-    imageDictionarySorted = sorted(imageDictionary.items(), key=lambda x:x[1], reverse=False)
+    imageDictionarySorted = sorted(imageDictionary.items(), key=lambda x:x[1], reverse=False)[:10]
     result = dict(imageDictionarySorted)
     return result
 
