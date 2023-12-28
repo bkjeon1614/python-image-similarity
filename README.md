@@ -8,6 +8,7 @@
 - numpy: 1.26.1
 - opencv_python: 4.8.1.78
 - requests: 2.31.0
+- flask: 3.0.0
 
 ## 초기설정
 
@@ -20,7 +21,10 @@ $ conda activate {name}
 $ sh ./setup.sh
 ```
 
-## 실행
+## 실행(Flask)
+```
+python app.py
+```
 
 #### 유사도 측정 실행
 

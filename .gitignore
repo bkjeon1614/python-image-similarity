@@ -1,3 +1,6 @@
-data/descriptor
-data/images
-data/keypoints
+static/src/descriptor
+static/src/images
+static/src/keypoints
+.DS_Store
+*.json
+__pycache__

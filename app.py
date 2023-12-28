@@ -1,24 +1,29 @@
-# -*- coding: utf-8 -*-
+from flask import Flask, jsonify, request, render_template
 import cv2, numpy as np
-import matplotlib.pylab as plt
 import os
-import sys
 import requests
+from werkzeug.utils import secure_filename
 import json
 import imghdr
 
-sys.stdout = open('stdout.txt', 'w')
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pylab as plt
+
+app = Flask(__name__)
+
 
 # Const
-IMAGES_DIR_PATH = 'static/src/images/'
-API_HOST = 'https://test-bigbro-api.lotteon.com'
-IMAGE_S3_URL = 'https://test-contents.lotteon.com/module/screenshot'
-IMAGE_EXT = '.webp'
-IMAGE_CONVERT_EXT = '.jpeg'
+app.config['IMAGES_DIR_PATH'] = 'static/src/images/'
+app.config['API_HOST'] = 'https://test-bigbro-api.lotteon.com'
+app.config['IMAGE_S3_URL'] = 'https://test-contents.lotteon.com/module/screenshot'
+app.config['IMAGE_EXT'] = '.webp'
+app.config['IMAGE_CONVERT_EXT'] = '.jpeg'
+
 
 # Request Function
 def sendApi(path, method):
-    url = API_HOST + path
+    url = app.config['API_HOST'] + path
     headers = {'Content-Type': 'application/json', 'charset': 'UTF-8', 'Accept': '*/*'}
     try:
         if method == 'GET':
@@ -30,11 +35,41 @@ def sendApi(path, method):
         print(ex)            
     return response
 
+
 # Image URL Download
 def isFileDownload(filename):
-    os.system('curl ' + IMAGE_S3_URL + '/' + filename + ' > ' + IMAGES_DIR_PATH + filename)
+    os.system('curl ' + app.config['IMAGE_S3_URL'] + '/' + filename + ' > ' + app.config['IMAGES_DIR_PATH'] + filename)
 
-# 모듈 리스트 호출
+
+# ========================== Home (Page) Start
+@app.route('/')
+def home():
+  return render_template('index.html')
+# ========================== Home (Page) End
+
+
+# ========================== 이미지 유사도 측정 Start
+## 이미지 유사도 측정 API
+@app.route("/api/similarity/images", methods=['POST'])
+def hello():
+  if 'uploadFile' not in request.files:
+    return 'File is missing', 404
+
+  uploadFile = request.files['uploadFile']
+  filename = secure_filename(uploadFile.filename)
+
+  if 'jpeg' not in filename.split('.')[1]:
+    return 'jpeg 파일만 업로드할 수 있습니다.', 404
+
+  uploadFile.save(os.path.join(app.config['IMAGES_DIR_PATH'], filename))
+
+  # 업로드 이미지 저장 후 유사도 측정 로직 실행
+  moduleImageList = getModuleImageList()
+  result = isImageProcess(filename, moduleImageList)
+
+  return jsonify(result)
+
+## 모듈 리스트 호출
 def getModuleImageList():
     imageList = list()
     try:
@@ -42,33 +77,30 @@ def getModuleImageList():
         if moduleResult.status_code == 200:
             moduleList = dict(json.loads(moduleResult.text)).get('data')
             for element in moduleList:
-                filename = element['dcornNo'] + IMAGE_EXT
-                convertFileName = element['dcornNo'] + IMAGE_CONVERT_EXT
+                filename = element['dcornNo'] + app.config['IMAGE_EXT']
+                convertFileName = element['dcornNo'] + app.config['IMAGE_CONVERT_EXT']
                 
                 imageList.append(convertFileName)
-                if os.path.isfile(IMAGES_DIR_PATH + convertFileName) == False:
+                if os.path.isfile(app.config['IMAGES_DIR_PATH'] + convertFileName) == False:
                     # 파일 다운 후 확장자 변경 (.webp -> .jpeg)
-                    print('New Download: ' + IMAGES_DIR_PATH + filename)
+                    print('New Download: ' + app.config['IMAGES_DIR_PATH'] + filename)
                     isFileDownload(filename)
-                    os.rename(IMAGES_DIR_PATH + filename, IMAGES_DIR_PATH + convertFileName)
+                    os.rename(app.config['IMAGES_DIR_PATH'] + filename, app.config['IMAGES_DIR_PATH'] + convertFileName)
     except Exception as e:
         print(e)
     return imageList
 
-# 로컬에 모듈 이미지 리스트 저장
-# def setModuleImage():
-#     for i in os.listdir(IMAGES_DIR_PATH):
-#         fullPath = os.path.join(IMAGES_DIR_PATH, i)
-#         if os.path.isfile(fullPath):
-#             imageList.append(fullPath.split('/')[2])
-
-
+## 유사도 측정
+#### HISTCMP_CORREL: 1에 가까울수록 유사
+#### HISTCMP_CHISQR: 0에 가까울수록 유사
+#### HISTCMP_INTERSECT: 값이 클수록 유사
+#### HISTCMP_BHATTACHARYYA: 0에 가까울수록 유사 (선택)
 def imageSimilarity(origImgName, selectImg, modelVal):
     result = {}
     try:
-        if imghdr.what(IMAGES_DIR_PATH + selectImg) != None:
-            img1 = cv2.imread(IMAGES_DIR_PATH + origImgName)
-            img2 = cv2.imread(IMAGES_DIR_PATH + selectImg)
+        if imghdr.what(app.config['IMAGES_DIR_PATH'] + selectImg) != None:
+            img1 = cv2.imread(app.config['IMAGES_DIR_PATH'] + origImgName)
+            img2 = cv2.imread(app.config['IMAGES_DIR_PATH'] + selectImg)
         
             # ----------img resize---------------------
             img2 = cv2.resize(img2, dsize = (197, 256))
@@ -100,36 +132,20 @@ def imageSimilarity(origImgName, selectImg, modelVal):
         print(e)
     return result
 
+## 유사도 측정 및 데이터 가공
 # 데이터 가공
 def isImageProcess(selectImg, imageList):
-    result = {}
     imageDictionary = {}
     for image in imageList:
         # 0에 가까울수록 유사
-        similarityResult = imageSimilarity(selectImg + IMAGE_CONVERT_EXT, image, cv2.HISTCMP_BHATTACHARYYA)
+        similarityResult = imageSimilarity(selectImg, image, cv2.HISTCMP_BHATTACHARYYA)
 
         if not similarityResult:
             print('similarityResult 없음: ' + image)
         else:
             imageDictionary[image] = similarityResult[image]
-    imageDictionarySorted = sorted(imageDictionary.items(), key=lambda x:x[1], reverse=False)[:10]
-    return dict(imageDictionarySorted)
+    return sorted(imageDictionary.items(), key=lambda x:x[1], reverse=False)[:10]
+## ========================== 이미지 유사도 측정 End
 
-# 결과값 리턴
-# HISTCMP_CORREL: 1에 가까울수록 유사
-# HISTCMP_CHISQR: 0에 가까울수록 유사
-# HISTCMP_INTERSECT: 값이 클수록 유사
-# HISTCMP_BHATTACHARYYA: 0에 가까울수록 유사 (선택)
-if len(sys.argv) > 2:
-    if sys.argv[1] == 'dev' or sys.argv[1] == 'prod':
-        indexImageName = sys.argv[2]
-        moduleImageList = getModuleImageList()
-    else:
-        print('올바른 개발환경을 입력하여 주시길 바랍니다. (dev or prod)')
-
-    with open(indexImageName + '.json', 'w') as json_file:
-        json.dump(isImageProcess(indexImageName, moduleImageList), json_file)    
-else:
-    print('개발환경(dev or prod) 또는 모듈번호를 매개변수로 입력하여 주시길 바랍니다. (Ex: python3 image_similarity_new.py dev M001558)')
-
-sys.stdout.close()
+if __name__ == '__main__':
+  app.run('0.0.0.0', port=8000, debug=True)

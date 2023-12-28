@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html leng="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>이미지 유사도 테스트 페이지</title>
+</head>
+
+<body>
+    <h1>이미지 유사도 테스트 페이지</h1>
+    <div>
+        <input type="file" id="uploadFile" name="uploadFile">
+        <button id="btn_submit" onclick="fn_submit()">측정</button>
+    </div>
+    <br /><br />
+    <div id="append_html">
+    </div>
+</body>
+
+<script type="text/javascript">
+    //파일 업로드
+    function fn_submit() {
+        let form = new FormData();
+        form.append("uploadFile", $("#uploadFile")[0].files[0]);
+
+        jQuery.ajax({
+            url: "/api/similarity/images"
+            , type: "POST"
+            , processData: false
+            , contentType: false
+            , data: form
+            , success: function (response) {
+                const selectImgName = $("#uploadFile")[0].files[0].name.split('.')[0]
+
+                let appendHtml = ''
+
+                appendHtml += '<div>'
+                appendHtml += '    <h1>[선택한 이미지 - ' + selectImgName + ']</h1>'
+                appendHtml += '    <img class="dp_img" src="https://test-contents.lotteon.com/module/screenshot/' + selectImgName + '.webp" />'
+                appendHtml += '</div>'
+                appendHtml += ''
+                appendHtml += '<br /><br />'
+
+                for (let i = 0; i < response.length; i++) {
+                    const imgName = response[i][0].split('.')[0]
+                    const score = response[i][1]
+
+                    appendHtml += '<div>'
+                    appendHtml += '    <h1>' + (i + 1) + '. SCORE[' + imgName + ']: ' + score + '</h1>'
+                    // appendHtml += '    <img src="../static/src/images/' + response[i][0].split('.')[0] + '.jpeg" />'
+                    appendHtml += '    <img class="dp_img" src="https://test-contents.lotteon.com/module/screenshot/' + imgName + '.webp" />'
+                    appendHtml += '</div>'
+                    appendHtml += '<br /><br />'
+                }
+
+                $('#append_html').html(appendHtml)
+            }
+            , error: function (jqXHR) {
+                alert(jqXHR.responseText);
+            }
+        });
+    }
+</script>
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+<link rel="stylesheet" href="../static/css/base.css">
+
+</html>
