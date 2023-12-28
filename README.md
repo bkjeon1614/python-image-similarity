@@ -23,10 +23,11 @@ $ sh ./setup.sh
 
 ## 실행(Flask)
 ```
+// localhost:8000 접속
 python app.py
 ```
 
-#### 유사도 측정 실행
+#### 유사도 측정 실행 (demo)
 
 python3 image_similarity.py {개발환경} {업로드파일명}
 

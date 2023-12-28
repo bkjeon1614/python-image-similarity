@@ -65,13 +65,9 @@ def hello():
 
   # 업로드 이미지 저장 후 유사도 측정 로직 실행
   moduleImageList = getModuleImageList()
-  # TODO: 여러 모델 조합해서 스코어 추출할 좋은 방법..?
-  # correlList = isImageProcess(filename, moduleImageList, cv2.HISTCMP_CORREL, True)
-  # chisqrList = isImageProcess(filename, moduleImageList, cv2.HISTCMP_CHISQR, False)
-  # intersectList = isImageProcess(filename, moduleImageList, cv2.HISTCMP_INTERSECT, True)
-  bhattacharyyaList = isImageProcess(filename, moduleImageList, cv2.HISTCMP_BHATTACHARYYA, False)
-  return jsonify(bhattacharyyaList)
+  result = isImageProcess(filename, moduleImageList)
 
+  return jsonify(result)
 
 ## 모듈 리스트 호출
 def getModuleImageList():
@@ -98,8 +94,8 @@ def getModuleImageList():
 #### HISTCMP_CORREL: 1에 가까울수록 유사
 #### HISTCMP_CHISQR: 0에 가까울수록 유사
 #### HISTCMP_INTERSECT: 값이 클수록 유사
-#### HISTCMP_BHATTACHARYYA: 0에 가까울수록 유사
-def imageSimilarity(origImgName, selectImg, modelType):
+#### HISTCMP_BHATTACHARYYA: 0에 가까울수록 유사 (선택)
+def imageSimilarity(origImgName, selectImg, modelVal):
     result = {}
     try:
         if imghdr.what(app.config['IMAGES_DIR_PATH'] + selectImg) != None:
@@ -128,8 +124,8 @@ def imageSimilarity(origImgName, selectImg, modelType):
             query = hists[0]
             for i, (hist, img) in enumerate(zip(hists, imgs)):
                 #---④ 각 메서드에 따라 img1과 각 이미지의 히스토그램 비교
-                ret = cv2.compareHist(query, hist, modelType)
-                if modelType == cv2.HISTCMP_INTERSECT: # 교차 분석인 경우 
+                ret = cv2.compareHist(query, hist, modelVal)
+                if modelVal == cv2.HISTCMP_INTERSECT: # 교차 분석인 경우 
                     result[selectImg] = ret/np.sum(query)         #비교대상으로 나누어 1로 정규화
                 result[selectImg] = round(ret, 5)
     except Exception as e:
@@ -138,17 +134,17 @@ def imageSimilarity(origImgName, selectImg, modelType):
 
 ## 유사도 측정 및 데이터 가공
 # 데이터 가공
-def isImageProcess(selectImg, imageList, modelType, reverseType):
+def isImageProcess(selectImg, imageList):
     imageDictionary = {}
     for image in imageList:
         # 0에 가까울수록 유사
-        similarityResult = imageSimilarity(selectImg, image, modelType)
+        similarityResult = imageSimilarity(selectImg, image, cv2.HISTCMP_BHATTACHARYYA)
 
         if not similarityResult:
             print('similarityResult 없음: ' + image)
         else:
             imageDictionary[image] = similarityResult[image]
-    return sorted(imageDictionary.items(), key=lambda x:x[1], reverse=reverseType)[:10]
+    return sorted(imageDictionary.items(), key=lambda x:x[1], reverse=False)[:10]
 ## ========================== 이미지 유사도 측정 End
 
 if __name__ == '__main__':
