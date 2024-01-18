@@ -12,7 +12,7 @@ sys.stdout = open('stdout.txt', 'w')
 # Const
 IMAGES_DIR_PATH = 'static/src/images/'
 API_HOST = 'https://test-bigbro-api.lotteon.com'
-IMAGE_S3_URL = 'https://test-contents.lotteon.com/module/screenshot'
+IMAGE_S3_URL = 'https://test-contents.lotteon.com/module/not_img_screenshot'
 IMAGE_EXT = '.webp'
 IMAGE_CONVERT_EXT = '.jpeg'
 

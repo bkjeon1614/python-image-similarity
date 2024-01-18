@@ -6,17 +6,13 @@ from werkzeug.utils import secure_filename
 import json
 import imghdr
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pylab as plt
-
 app = Flask(__name__)
 
 
 # Const
 app.config['IMAGES_DIR_PATH'] = 'static/src/images/'
 app.config['API_HOST'] = 'https://test-bigbro-api.lotteon.com'
-app.config['IMAGE_S3_URL'] = 'https://test-contents.lotteon.com/module/not_img_screenshot'
+app.config['IMAGE_S3_URL'] = 'https://test-contents.lotteon.com/module/screenshot'
 app.config['IMAGE_EXT'] = '.webp'
 app.config['IMAGE_CONVERT_EXT'] = '.jpeg'
 
@@ -65,9 +61,33 @@ def hello():
 
   # 업로드 이미지 저장 후 유사도 측정 로직 실행
   moduleImageList = getModuleImageList()
-  result = isImageProcess(filename, moduleImageList)
 
+  # 각 알고리즘별 유사도 리스트 추출 후 스코어링
+  ## HISTCMP_CORREL
+  correlList = isScoreSet(isImageProcess(filename, moduleImageList, cv2.HISTCMP_CORREL, False))
+  ## HISTCMP_CHISQR
+  chisqrList = isScoreSet(isImageProcess(filename, moduleImageList, cv2.HISTCMP_CHISQR, False))
+  ## HISTCMP_INTERSECT
+  intersectList = isScoreSet(isImageProcess(filename, moduleImageList, cv2.HISTCMP_CHISQR, True))
+  ## HISTCMP_BHATTACHARYYA
+  bhattacharyyaList = isScoreSet(isImageProcess(filename, moduleImageList, cv2.HISTCMP_BHATTACHARYYA, False))
+
+  # 스코어링한 데이터의 최종 스코어 반영
+  scoredMergeList = isMergeListScoreSum(isMergeListScoreSum(isMergeListScoreSum(correlList, chisqrList), intersectList), bhattacharyyaList)
+  result = sorted(scoredMergeList.items(), key=lambda x:x[1], reverse=False)
   return jsonify(result)
+
+
+## 유사도 리스트 스코어 추출
+def isScoreSet(similarityList):
+    result = {}
+    for i, (key, val) in enumerate(similarityList):
+        result[key] = i + 1
+    return result
+
+## dict(key, {score값}) 형태의 2개의 리스트를 merge 하면서 score 를 합침
+def isMergeListScoreSum(origList, targetList):
+    return {key: origList.get(key, 0) + targetList.get(key, 0) for key in set(origList) | set(targetList)}
 
 ## 모듈 리스트 호출
 def getModuleImageList():
@@ -94,8 +114,8 @@ def getModuleImageList():
 #### HISTCMP_CORREL: 1에 가까울수록 유사
 #### HISTCMP_CHISQR: 0에 가까울수록 유사
 #### HISTCMP_INTERSECT: 값이 클수록 유사
-#### HISTCMP_BHATTACHARYYA: 0에 가까울수록 유사 (선택)
-def imageSimilarity(origImgName, selectImg, modelVal):
+#### HISTCMP_BHATTACHARYYA: 0에 가까울수록 유사
+def imageSimilarity(origImgName, selectImg, modelType):
     result = {}
     try:
         if imghdr.what(app.config['IMAGES_DIR_PATH'] + selectImg) != None:
@@ -109,10 +129,6 @@ def imageSimilarity(origImgName, selectImg, modelVal):
             imgs = [img1, img2]
             hists = []
             for i, img in enumerate(imgs) :
-                plt.subplot(1, len(imgs), i+1)
-                plt.title('img%d'% (i+1))
-                plt.axis('off') 
-                plt.imshow(img[:,:,::-1])
                 #---① 각 이미지를 HSV로 변환
                 hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
                 #---② H,S 채널에 대한 히스토그램 계산
@@ -124,8 +140,8 @@ def imageSimilarity(origImgName, selectImg, modelVal):
             query = hists[0]
             for i, (hist, img) in enumerate(zip(hists, imgs)):
                 #---④ 각 메서드에 따라 img1과 각 이미지의 히스토그램 비교
-                ret = cv2.compareHist(query, hist, modelVal)
-                if modelVal == cv2.HISTCMP_INTERSECT: # 교차 분석인 경우 
+                ret = cv2.compareHist(query, hist, modelType)
+                if modelType == cv2.HISTCMP_INTERSECT: # 교차 분석인 경우 
                     result[selectImg] = ret/np.sum(query)         #비교대상으로 나누어 1로 정규화
                 result[selectImg] = round(ret, 5)
     except Exception as e:
@@ -134,17 +150,18 @@ def imageSimilarity(origImgName, selectImg, modelVal):
 
 ## 유사도 측정 및 데이터 가공
 # 데이터 가공
-def isImageProcess(selectImg, imageList):
+def isImageProcess(selectImg, imageList, modelType, reverseType):
     imageDictionary = {}
     for image in imageList:
         # 0에 가까울수록 유사
-        similarityResult = imageSimilarity(selectImg, image, cv2.HISTCMP_BHATTACHARYYA)
+        similarityResult = imageSimilarity(selectImg, image, modelType)
 
         if not similarityResult:
             print('similarityResult 없음: ' + image)
         else:
             imageDictionary[image] = similarityResult[image]
-    return sorted(imageDictionary.items(), key=lambda x:x[1], reverse=False)[:10]
+    # return sorted(imageDictionary.items(), key=lambda x:x[1], reverse=reverseType)[:10]
+    return sorted(imageDictionary.items(), key=lambda x:x[1], reverse=reverseType)
 ## ========================== 이미지 유사도 측정 End
 
 if __name__ == '__main__':
